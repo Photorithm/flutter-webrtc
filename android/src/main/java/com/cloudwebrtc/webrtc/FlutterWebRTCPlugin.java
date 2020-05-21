@@ -53,9 +53,9 @@ import io.flutter.view.TextureRegistry;
 public class FlutterWebRTCPlugin implements MethodCallHandler {
 
     static public final String TAG = "FlutterWebRTCPlugin";
+    private static FlutterWebRTCPlugin handler;
 
     private final Registrar registrar;
-    private final MethodChannel channel;
 
     public Map<String, MediaStream> localStreams;
     public Map<String, MediaStreamTrack> localTracks;
@@ -87,17 +87,17 @@ public class FlutterWebRTCPlugin implements MethodCallHandler {
      * Plugin registration.
      */
     public static void registerWith(Registrar registrar) {
+        handler = handler == null ? new FlutterWebRTCPlugin(registrar) : handler;
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "FlutterWebRTC.Method");
-        channel.setMethodCallHandler(new FlutterWebRTCPlugin(registrar, channel));
+        channel.setMethodCallHandler(handler);
     }
 
     public Registrar registrar() {
         return this.registrar;
     }
 
-    private FlutterWebRTCPlugin(Registrar registrar, MethodChannel channel) {
+    private FlutterWebRTCPlugin(Registrar registrar) {
         this.registrar = registrar;
-        this.channel = channel;
         this.textures = registrar.textures();
         mPeerConnectionObservers = new HashMap<String, PeerConnectionObserver>();
         localStreams = new HashMap<String, MediaStream>();
@@ -142,7 +142,7 @@ public class FlutterWebRTCPlugin implements MethodCallHandler {
             // devices has changed.
             @Override
             public void onAudioDeviceChanged(
-                RTCAudioManager.AudioDevice audioDevice, Set<RTCAudioManager.AudioDevice> availableAudioDevices) {
+                    RTCAudioManager.AudioDevice audioDevice, Set<RTCAudioManager.AudioDevice> availableAudioDevices) {
                 onAudioManagerDevicesChanged(audioDevice, availableAudioDevices);
             }
         });
@@ -159,7 +159,7 @@ public class FlutterWebRTCPlugin implements MethodCallHandler {
     // This method is called when the audio manager reports audio device change,
     // e.g. from wired headset to speakerphone.
     private void onAudioManagerDevicesChanged(
-        final RTCAudioManager.AudioDevice device, final Set<RTCAudioManager.AudioDevice> availableDevices) {
+            final RTCAudioManager.AudioDevice device, final Set<RTCAudioManager.AudioDevice> availableDevices) {
         Log.d(TAG, "onAudioManagerDevicesChanged: " + availableDevices + ", "
                 + "selected: " + device);
         // TODO(henrika): add callback handler.
