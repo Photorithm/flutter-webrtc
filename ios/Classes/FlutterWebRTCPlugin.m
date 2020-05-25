@@ -17,55 +17,62 @@
     BOOL _speakerOn;
 }
 
+static NSMutableDictionary<NSString *, RTCPeerConnection *> *globalPeerConnections = nil;
+static NSMutableDictionary<NSString *, RTCMediaStream *> *globalLocalStreams = nil;
+static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalLocalTracks = nil;
+
 @synthesize messenger = _messenger;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-    
-    FlutterMethodChannel* channel = [FlutterMethodChannel
-                                     methodChannelWithName:@"FlutterWebRTC.Method"
-                                     binaryMessenger:[registrar messenger]];
-    UIViewController *viewController = (UIViewController *)registrar.messenger;
-    FlutterWebRTCPlugin* instance = [[FlutterWebRTCPlugin alloc] initWithChannel:channel
-                                                                       registrar:registrar
-                                                                       messenger:[registrar messenger]
-                                                                  viewController:viewController
-                                                                    withTextures:[registrar textures]];
-    [registrar addMethodCallDelegate:instance channel:channel];
+  FlutterMethodChannel* channel = [FlutterMethodChannel
+                   methodChannelWithName:@"FlutterWebRTC.Method"
+                   binaryMessenger:[registrar messenger]];
+  UIViewController *viewController = (UIViewController *)registrar.messenger;
+  FlutterWebRTCPlugin* instance = [[FlutterWebRTCPlugin alloc] initWithChannel:channel
+                                    registrar:registrar
+                                    messenger:[registrar messenger]
+                                 viewController:viewController
+                                  withTextures:[registrar textures]];
+  [registrar addMethodCallDelegate:instance channel:channel];
 }
 
 - (instancetype)initWithChannel:(FlutterMethodChannel *)channel
-                      registrar:(NSObject<FlutterPluginRegistrar>*)registrar
-                      messenger:(NSObject<FlutterBinaryMessenger>*)messenger
-                 viewController:(UIViewController *)viewController
-                   withTextures:(NSObject<FlutterTextureRegistry> *)textures{
+           registrar:(NSObject<FlutterPluginRegistrar>*)registrar
+           messenger:(NSObject<FlutterBinaryMessenger>*)messenger
+         viewController:(UIViewController *)viewController
+          withTextures:(NSObject<FlutterTextureRegistry> *)textures{
+  self = [super init];
+  if (self) {
+    _methodChannel = channel;
+    _registry = registrar;
+    _textures = textures;
+    _messenger = messenger;
+    _speakerOn = NO;
+    self.viewController = viewController;
+  }
+  RTCDefaultVideoDecoderFactory *decoderFactory = [[RTCDefaultVideoDecoderFactory alloc] init];
+  RTCDefaultVideoEncoderFactory *encoderFactory = [[RTCDefaultVideoEncoderFactory alloc] init];
+  _peerConnectionFactory = [[RTCPeerConnectionFactory alloc]
+               initWithEncoderFactory:encoderFactory
+               decoderFactory:decoderFactory];
+               
+  if(globalPeerConnections == nil){
+    globalPeerConnections = [NSMutableDictionary new];
+  }
+  if(globalLocalStreams == nil){
+    globalLocalStreams =[NSMutableDictionary new];
+  }
+  if(globalLocalTracks == nil){
+    globalLocalTracks = [NSMutableDictionary new];
+  }
 
-    self = [super init];
-    
-    if (self) {
-        _methodChannel = channel;
-        _registry = registrar;
-        _textures = textures;
-        _messenger = messenger;
-        _speakerOn = NO;
-        self.viewController = viewController;
-    }
-    
-    RTCDefaultVideoDecoderFactory *decoderFactory = [[RTCDefaultVideoDecoderFactory alloc] init];
-    RTCDefaultVideoEncoderFactory *encoderFactory = [[RTCDefaultVideoEncoderFactory alloc] init];
-    
-    _peerConnectionFactory = [[RTCPeerConnectionFactory alloc]
-                              initWithEncoderFactory:encoderFactory
-                              decoderFactory:decoderFactory];
-    
-    
-    self.peerConnections = [NSMutableDictionary new];
-    self.localStreams = [NSMutableDictionary new];
-    self.localTracks = [NSMutableDictionary new];
-    self.renders = [[NSMutableDictionary alloc] init];
-
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:nil];
-
-    return self;
+  self.peerConnections = globalPeerConnections;
+  self.localStreams = globalLocalStreams;
+  self.localTracks = globalLocalTracks;
+  self.renders = [[NSMutableDictionary alloc] init];
+  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:nil];
+  
+  return self;
 }
 
 
