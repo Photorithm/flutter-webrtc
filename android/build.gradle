@@ -41,6 +41,10 @@ android {
 }
 
 dependencies {
-    api 'org.webrtc:google-webrtc:1.0.28262'
+    api 'org.webrtc:webrtc-googlesource' {
+        version {
+            branch = 'audio/stream-music'
+        }
+    }
     implementation "androidx.annotation:annotation:1.0.1"
 }
