@@ -1,7 +1,1 @@
 rootProject.name = 'webrtc'
-
-sourceControl {
-    gitRepository("https://github.com/Photorithm/webrtc-google-source.git") {
-        producesModule(org.webrtc:webrtc-google-source)
-    }
-}

@@ -16,6 +16,7 @@ rootProject.allprojects {
     repositories {
         google()
         jcenter()
+        maven { url "https://jitpack.io" }
     }
 }
 
@@ -41,10 +42,6 @@ android {
 }
 
 dependencies {
-    api 'org.webrtc:webrtc-google-source' {
-        version {
-            branch = 'audio/stream-music'
-        }
-    }
+    api 'com.github.Photorithm:webrtc-google-source:audio/stream-music-SNAPSHOT'
     implementation "androidx.annotation:annotation:1.0.1"
 }
