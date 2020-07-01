@@ -1,1 +1,3 @@
 rootProject.name = 'webrtc'
+
+include ':flutter-webrtc', ':webrtc-google-source'

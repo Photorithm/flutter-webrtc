@@ -42,6 +42,6 @@ android {
 }
 
 dependencies {
-    implementation 'com.github.Photorithm:webrtc-google-source:master-SNAPSHOT'
+    api ':webrtc-google-source'
     implementation "androidx.annotation:annotation:1.0.1"
 }
