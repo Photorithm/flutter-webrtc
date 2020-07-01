@@ -41,7 +41,7 @@ android {
 }
 
 dependencies {
-    api 'org.webrtc:google-webrtc' {
+    api 'org.webrtc:webrtc-google-source' {
         version {
             branch = 'audio/stream-music'
         }
