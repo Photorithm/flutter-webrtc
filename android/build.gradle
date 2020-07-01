@@ -42,6 +42,6 @@ android {
 }
 
 dependencies {
-    api 'com.github.Photorithm:webrtc-google-source:audio/stream-music-SNAPSHOT'
+    api 'com.github.Photorithm:webrtc-google-source:master-SNAPSHOT'
     implementation "androidx.annotation:annotation:1.0.1"
 }
