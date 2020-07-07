@@ -16,7 +16,6 @@ rootProject.allprojects {
     repositories {
         google()
         jcenter()
-        maven { url "https://jitpack.io" }
     }
 }
 
@@ -42,6 +41,6 @@ android {
 }
 
 dependencies {
-    api 'com.github.Photorithm:webrtc-google-source:master-SNAPSHOT'
+    compile(name:'libwebrtc', ext:'aar')
     implementation "androidx.annotation:annotation:1.0.1"
 }
