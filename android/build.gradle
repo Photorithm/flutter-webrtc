@@ -44,6 +44,6 @@ android {
 }
 
 dependencies {
-    compile(name:'libwebrtc', ext:'aar')
+    implementation files('src/main/libs/libwebrtc.aar')
     implementation "androidx.annotation:annotation:1.0.1"
 }
