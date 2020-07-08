@@ -5,9 +5,6 @@ buildscript {
     repositories {
         google()
         jcenter()
-        flatDir {
-            dirs 'src/main/libs'
-        }
     }
 
     dependencies {
@@ -19,6 +16,9 @@ rootProject.allprojects {
     repositories {
         google()
         jcenter()
+        maven {
+            url 'https://raw.github.com/photorithm/libwebrtc_android/repo/'
+        }
     }
 }
 
@@ -44,6 +44,6 @@ android {
 }
 
 dependencies {
-    implementation files('src/main/libs/libwebrtc.aar')
+    api 'com.aar.app:google-webrtc:v2'
     implementation "androidx.annotation:annotation:1.0.1"
 }

@@ -115,4 +115,55 @@ This compiles the source code for all supported **cpu types** such as **arm64-v8
 After it is finished, there should be a **libwebrtc.aar** file in your current directory.
 
 ### Linking the Compiled WebRTC AAR file
-TODO
+Inside **android/** add these lines inside the **build.gradle**
+
+```
+rootProject.allprojects {
+    repositories {
+        google()
+        jcenter()
+        maven {
+            url 'https://raw.github.com/photorithm/libwebrtc_android/repo/'
+        }
+    }
+}
+```
+
+```
+dependencies {
+    api 'com.aar.app:google-webrtc:v2'
+    implementation "androidx.annotation:annotation:1.0.1"
+}
+```
+
+#### Download the maven repo
+Run this command to download the Maven Repo
+```bash
+git clone https://github.com/Photorithm/libwebrtc_android.git
+```
+
+You need to have the .aar file hosted on Maven.
+
+Make sure that **maven** is installed on your host machine
+```bash
+brew install maven
+```
+
+Run this command to generate the maven files
+
+```bash
+mvn install:install-file -DgroupId=com.aar.app -DartifactId=google-webrtc -Dversion=v2 -Dfile=/Users/photorithm/Downloads/google-webrtc-v2.aar -Dpackaging=aar -DgeneratePom=true -DlocalRepository=/Users/photorithm/development/libwebrtc_android/com/aar/app/google-webrtc/v2 -DcreateChecksum=true
+```
+
+Remove all the previous files:
+```bash
+rm -rf ~/development/libwebrtc_android/com/aar/app/google-webrtc/*
+```
+
+Copy over newly generated Maven files
+```bash
+cp -R ~/.m2/repository/com/aar/app/google-webrtc/* ~/development/libwebrtc_android/com/aar/app/google-webrtc/
+```
+
+Commit these changes on the **repo** branch of the **Photorithm/libwebrtc_android** project
+
