@@ -115,7 +115,12 @@ This compiles the source code for all supported **cpu types** such as **arm64-v8
 After it is finished, there should be a **libwebrtc.aar** file in your current directory.
 
 ### Linking the Compiled WebRTC AAR file
-Inside **android/** add these lines inside the **build.gradle**
+Clone the forked Flutter-WebRTC repo:
+```bash
+git clone https://github.com/Photorithm/flutter-webrtc.git
+```
+
+Open **Flutter-WebRTC project** and inside the **android/** folder add these lines inside the **build.gradle**
 
 ```
 rootProject.allprojects {
@@ -136,7 +141,7 @@ dependencies {
 }
 ```
 
-#### Download the maven repo
+#### Update the AAR file on the Maven Repo
 Run this command to download the Maven Repo
 ```bash
 git clone https://github.com/Photorithm/libwebrtc_android.git
