@@ -105,7 +105,7 @@ git branch
 Here is when you can edit the source code.  We needed to change the Audio channel in Android so we just replaced **SL_ANDROID_STREAM_VOICE** to **SL_ANDROID_STREAM_MEDIA** and **STREAM_VOICE_CHAT** to **STREAM_MUSIC** in all of the files.
 
 ### Compile WebRTC into AAR file
-Run this command to compile the source code into a **.arr** file:
+Run this command to compile the source code into a **.aar** file:
 ```bash
 ./tools_webrtc/android/build_aar.py
 ```
@@ -146,8 +146,6 @@ Run this command to download the Maven Repo
 ```bash
 git clone https://github.com/Photorithm/libwebrtc_android.git
 ```
-
-You need to have the .aar file hosted on Maven.
 
 Make sure that **maven** is installed on your host machine
 ```bash
