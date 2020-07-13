@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.3.1'
+        classpath 'com.android.tools.build:gradle:3.6.3'
     }
 }
 
@@ -45,5 +45,5 @@ android {
 
 dependencies {
     api 'com.aar.app:google-webrtc:v2'
-    implementation "androidx.annotation:annotation:1.0.1"
+    implementation "androidx.annotation:annotation:1.1.0"
 }
