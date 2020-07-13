@@ -90,8 +90,8 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   private PeerConnectionFactory mFactory;
 
-  private final Map<String, MediaStream> localStreams = new HashMap<>();
-  private final Map<String, MediaStreamTrack> localTracks = new HashMap<>();
+  private static final Map<String, MediaStream> localStreams = new HashMap<>();
+  private static final Map<String, MediaStreamTrack> localTracks = new HashMap<>();
 
   private LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
 
