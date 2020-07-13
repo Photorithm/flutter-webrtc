@@ -83,16 +83,17 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
 
   static public final String TAG = "FlutterWebRTCPlugin";
 
-  private final Map<String, PeerConnectionObserver> mPeerConnectionObservers = new HashMap<>();
+  private static final Map<String, PeerConnectionObserver> mPeerConnectionObservers = new HashMap<>();
   private BinaryMessenger messenger;
   private Context context;
   private final TextureRegistry textures;
 
   private PeerConnectionFactory mFactory;
 
-  private static final Map<String, MediaStream> localStreams = new HashMap<>();
-  private static final Map<String, MediaStreamTrack> localTracks = new HashMap<>();
+  private final Map<String, MediaStream> localStreams = new HashMap<>();
+  private final Map<String, MediaStreamTrack> localTracks = new HashMap<>();
 
+  private LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
   private LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
 
   /**
