@@ -94,7 +94,6 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   private final Map<String, MediaStreamTrack> localTracks = new HashMap<>();
 
   private LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
-  private LongSparseArray<FlutterRTCVideoRenderer> renders = new LongSparseArray<>();
 
   /**
    * The implementation of {@code getUserMedia} extracted into a separate file in order to reduce
