@@ -44,7 +44,7 @@ android {
 }
 
 dependencies {
-    api 'org.webrtc:google-webrtc:1.0.28262'
-    // api 'com.aar.app:google-webrtc:v2'
+    // api 'org.webrtc:google-webrtc:1.0.28262'
+    api 'com.aar.app:google-webrtc:v2'
     implementation "androidx.annotation:annotation:1.1.0"
 }
