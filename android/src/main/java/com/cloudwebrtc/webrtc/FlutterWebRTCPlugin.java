@@ -22,7 +22,7 @@ public class FlutterWebRTCPlugin implements FlutterPlugin, ActivityAware {
 
   static public final String TAG = "FlutterWebRTCPlugin";
 
-  private RTCAudioManager rtcAudioManager;
+  static private RTCAudioManager rtcAudioManager;
   private MethodChannel channel;
   private MethodCallHandlerImpl methodCallHandler;
 
