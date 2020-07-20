@@ -16,7 +16,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.media.AudioDeviceInfo;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Build;
 import android.preference.PreferenceManager;
@@ -251,18 +253,29 @@ public class RTCAudioManager {
     };
 
     // Request audio playout focus (without ducking) and install listener for changes in focus.
-    int result = audioManager.requestAudioFocus(audioFocusChangeListener,
-        AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+    int result = AudioManager.AUDIOFOCUS_REQUEST_FAILED;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      AudioAttributes attributes = new AudioAttributes.Builder()
+              .setUsage(AudioAttributes.USAGE_MEDIA)
+              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+              .setLegacyStreamType(AudioManager.STREAM_MUSIC)
+              .build();
+      AudioFocusRequest request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+              .setOnAudioFocusChangeListener(audioFocusChangeListener)
+              .setAudioAttributes(attributes)
+              .build();
+      result = audioManager.requestAudioFocus(request);
+    } else {
+      result = audioManager.requestAudioFocus(audioFocusChangeListener,
+              AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+    }
     if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-      Log.d(TAG, "Audio focus request granted for VOICE_CALL streams");
+      Log.d(TAG, "Audio focus request granted for MUSIC streams");
     } else {
       Log.e(TAG, "Audio focus request failed");
     }
 
-    // Start by setting MODE_IN_COMMUNICATION as default audio mode. It is
-    // required to be in this mode when playout and/or recording starts for
-    // best possible VoIP performance.
-    audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+    audioManager.setMode(AudioManager.MODE_NORMAL);
 
     // Always disable microphone mute during a WebRTC call.
     setMicrophoneMute(false);
@@ -309,7 +322,7 @@ public class RTCAudioManager {
     // Abandon audio focus. Gives the previous focus owner, if any, focus.
     audioManager.abandonAudioFocus(audioFocusChangeListener);
     audioFocusChangeListener = null;
-    Log.d(TAG, "Abandoned audio focus for VOICE_CALL streams");
+    Log.d(TAG, "Abandoned audio focus for MUSIC streams");
 
     if (proximitySensor != null) {
       proximitySensor.stop();
