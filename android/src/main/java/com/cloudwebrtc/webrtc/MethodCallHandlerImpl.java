@@ -116,6 +116,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   }
 
   void dispose() {
+    for(PeerConnectionObserver o : mPeerConnectionObservers.values()){
+      o.dispose();
+    }
     mPeerConnectionObservers.clear();
   }
 
