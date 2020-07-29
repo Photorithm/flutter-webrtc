@@ -199,31 +199,36 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         Map<String, Object> resultMap = new HashMap<>();
         List<Object> audioTracks = new ArrayList<>();
         List<Object> videoTracks = new ArrayList<>();
-        for (AudioTrack track : stream.audioTracks) {
-          localTracks.put(track.id(), track);
-          Map<String, Object> trackMap = new HashMap<>();
-          trackMap.put("enabled", track.enabled());
-          trackMap.put("id", track.id());
-          trackMap.put("kind", track.kind());
-          trackMap.put("label", track.id());
-          trackMap.put("readyState", "live");
-          trackMap.put("remote", false);
-          audioTracks.add(trackMap);
+        if(stream != null) {
+          for (AudioTrack track : stream.audioTracks) {
+            localTracks.put(track.id(), track);
+            Map<String, Object> trackMap = new HashMap<>();
+            trackMap.put("enabled", track.enabled());
+            trackMap.put("id", track.id());
+            trackMap.put("kind", track.kind());
+            trackMap.put("label", track.id());
+            trackMap.put("readyState", "live");
+            trackMap.put("remote", false);
+            audioTracks.add(trackMap);
+          }
+          for (VideoTrack track : stream.videoTracks) {
+            localTracks.put(track.id(), track);
+            Map<String, Object> trackMap = new HashMap<>();
+            trackMap.put("enabled", track.enabled());
+            trackMap.put("id", track.id());
+            trackMap.put("kind", track.kind());
+            trackMap.put("label", track.id());
+            trackMap.put("readyState", "live");
+            trackMap.put("remote", false);
+            videoTracks.add(trackMap);
+          }
+          resultMap.put("audioTracks", audioTracks);
+          resultMap.put("videoTracks", videoTracks);
+          result.success(resultMap);
+        } else {
+          result.error("404", "media stream with id " + streamId + " not found", null);
         }
-        for (VideoTrack track : stream.videoTracks) {
-          localTracks.put(track.id(), track);
-          Map<String, Object> trackMap = new HashMap<>();
-          trackMap.put("enabled", track.enabled());
-          trackMap.put("id", track.id());
-          trackMap.put("kind", track.kind());
-          trackMap.put("label", track.id());
-          trackMap.put("readyState", "live");
-          trackMap.put("remote", false);
-          videoTracks.add(trackMap);
-        }
-        resultMap.put("audioTracks", audioTracks);
-        resultMap.put("videoTracks", videoTracks);
-        result.success(resultMap);
+
         break;
       }
       case "addStream": {
