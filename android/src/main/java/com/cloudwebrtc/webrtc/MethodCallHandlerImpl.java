@@ -116,10 +116,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   }
 
   void dispose() {
-    for(PeerConnectionObserver o : mPeerConnectionObservers.values()){
-      o.dispose();
-    }
-    mPeerConnectionObservers.clear();
+    //Disposing breaks audio controls + can cause freezing in the video player
+
+    // for(PeerConnectionObserver o : mPeerConnectionObservers.values()){
+    //   o.dispose();
+    // }
+    // mPeerConnectionObservers.clear();
   }
 
   private void ensureInitialized() {
