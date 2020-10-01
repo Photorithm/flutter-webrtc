@@ -554,10 +554,10 @@ typedef void (^NavigatorUserMediaSuccessCallback)(RTCMediaStream *mediaStream);
 
 -(void)mediaStreamTrackCaptureFrame:(RTCVideoTrack *)track toPath:(NSString *) path result:(FlutterResult)result
 {
-    if (!self.videoCapturer) {
-        NSLog(@"Video capturer is null. Can't capture frame.");
-        return;
-    }
+    // if (!self.videoCapturer) {
+    //     NSLog(@"Video capturer is null. Can't capture frame.");
+    //     return;
+    // }
 
     FlutterRTCFrameCapturer *capturer = [[FlutterRTCFrameCapturer alloc] initWithTrack:track toPath:path result:result];
 }
