@@ -6,6 +6,7 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <WebRTC/WebRTC.h>
+#import <stdatomic.h>
 
 
 
@@ -17,9 +18,10 @@
     BOOL _speakerOn;
 }
 
+static _Atomic(int) _threadCount = 0;
 static NSMutableDictionary<NSString *, RTCPeerConnection *> *globalPeerConnections = nil;
-static NSMutableDictionary<NSString *, RTCMediaStream *> *globalLocalStreams = nil;
-static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalLocalTracks = nil;
+static NSMutableDictionary<NSString *, RTCMediaStream *> *globalStreams = nil;
+static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = nil;
 
 @synthesize messenger = _messenger;
 
@@ -55,20 +57,20 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalLocalTracks
   _peerConnectionFactory = [[RTCPeerConnectionFactory alloc]
                initWithEncoderFactory:encoderFactory
                decoderFactory:decoderFactory];
-               
+  atomic_fetch_add_explicit(&_threadCount, 1, memory_order_relaxed);
   if(globalPeerConnections == nil){
     globalPeerConnections = [NSMutableDictionary new];
   }
-  if(globalLocalStreams == nil){
-    globalLocalStreams =[NSMutableDictionary new];
+  if(globalStreams == nil){
+    globalStreams =[NSMutableDictionary new];
   }
-  if(globalLocalTracks == nil){
-    globalLocalTracks = [NSMutableDictionary new];
+  if(globalTracks == nil){
+    globalTracks = [NSMutableDictionary new];
   }
 
   self.peerConnections = globalPeerConnections;
-  self.localStreams = globalLocalStreams;
-  self.localTracks = globalLocalTracks;
+  self.localStreams = globalStreams;
+  self.localTracks = globalTracks;
   self.renders = [[NSMutableDictionary alloc] init];
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:nil];
   
@@ -581,18 +583,21 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalLocalTracks
 
 - (void)dealloc
 {
-    [_localTracks removeAllObjects];
-    _localTracks = nil;
-    [_localStreams removeAllObjects];
-    _localStreams = nil;
-    
-    for (NSString *peerConnectionId in _peerConnections) {
-        RTCPeerConnection *peerConnection = _peerConnections[peerConnectionId];
-        peerConnection.delegate = nil;
-        [peerConnection close];
+    atomic_fetch_add_explicit(&_threadCount, -1, memory_order_relaxed);
+    if(_threadCount == 0){
+        [_localTracks removeAllObjects];
+        _localTracks = nil;
+        [_localStreams removeAllObjects];
+        _localStreams = nil;
+        
+        for (NSString *peerConnectionId in _peerConnections) {
+            RTCPeerConnection *peerConnection = _peerConnections[peerConnectionId];
+            peerConnection.delegate = nil;
+            [peerConnection close];
+        }
+        [_peerConnections removeAllObjects];
+        _peerConnectionFactory = nil;
     }
-    [_peerConnections removeAllObjects];
-    _peerConnectionFactory = nil;
 }
 
 
