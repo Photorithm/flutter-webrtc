@@ -57,20 +57,22 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
   _peerConnectionFactory = [[RTCPeerConnectionFactory alloc]
                initWithEncoderFactory:encoderFactory
                decoderFactory:decoderFactory];
-  atomic_fetch_add_explicit(&_threadCount, 1, memory_order_relaxed);
-  if(globalPeerConnections == nil){
-    globalPeerConnections = [NSMutableDictionary new];
-  }
-  if(globalStreams == nil){
-    globalStreams =[NSMutableDictionary new];
-  }
-  if(globalTracks == nil){
-    globalTracks = [NSMutableDictionary new];
-  }
+  @synchronized (globalPeerConnections) {
+    atomic_fetch_add_explicit(&_threadCount, 1, memory_order_relaxed);
+    if(globalPeerConnections == nil){
+      globalPeerConnections = [NSMutableDictionary new];
+    }
+    if(globalStreams == nil){
+      globalStreams =[NSMutableDictionary new];
+    }
+    if(globalTracks == nil){
+      globalTracks = [NSMutableDictionary new];
+    }
 
-  self.peerConnections = globalPeerConnections;
-  self.localStreams = globalStreams;
-  self.localTracks = globalTracks;
+    self.peerConnections = globalPeerConnections;
+    self.localStreams = globalStreams;
+    self.localTracks = globalTracks;
+  }
   self.renders = [[NSMutableDictionary alloc] init];
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:nil];
   
@@ -583,20 +585,26 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
 
 - (void)dealloc
 {
-    atomic_fetch_add_explicit(&_threadCount, -1, memory_order_relaxed);
-    if(_threadCount == 0){
-        [_localTracks removeAllObjects];
-        _localTracks = nil;
-        [_localStreams removeAllObjects];
-        _localStreams = nil;
-        
-        for (NSString *peerConnectionId in _peerConnections) {
-            RTCPeerConnection *peerConnection = _peerConnections[peerConnectionId];
-            peerConnection.delegate = nil;
-            [peerConnection close];
-        }
-        [_peerConnections removeAllObjects];
-        _peerConnectionFactory = nil;
+    @synchronized (globalPeerConnections) {
+     atomic_fetch_add_explicit(&_threadCount, -1, memory_order_relaxed);
+     if(_threadCount == 0){
+         [_localTracks removeAllObjects];
+         _localTracks = nil;
+         [_localStreams removeAllObjects];
+         _localStreams = nil;
+     
+         for (NSString *peerConnectionId in _peerConnections) {
+             RTCPeerConnection *peerConnection = _peerConnections[peerConnectionId];
+             peerConnection.delegate = nil;
+             [peerConnection close];
+         }
+         [_peerConnections removeAllObjects];
+         _peerConnectionFactory = nil;
+         
+         globalStreams = nil;
+         globalTracks = nil;
+         globalPeerConnections = nil;
+     }
     }
 }
 
