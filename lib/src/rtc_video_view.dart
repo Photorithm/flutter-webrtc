@@ -56,8 +56,12 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue> {
   int _textureId;
   MediaStream _srcObject;
   StreamSubscription<dynamic> _eventSubscription;
+  bool _didRenderFirstFrame = false;
+
+  bool get didRenderFirstFrame => _didRenderFirstFrame;
 
   Future<void> initialize() async {
+    _didRenderFirstFrame = false;
     final response = await _channel
         .invokeMethod<Map<dynamic, dynamic>>('createVideoRenderer', {});
     _textureId = response['textureId'];
@@ -109,6 +113,7 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue> {
             renderVideo: renderVideo);
         break;
       case 'didFirstFrameRendered':
+        _didRenderFirstFrame = true;
         break;
     }
   }
