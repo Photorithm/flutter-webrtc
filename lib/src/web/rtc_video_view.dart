@@ -84,6 +84,8 @@ class RTCVideoRenderer extends ValueNotifier<RTCVideoValue> {
   MediaStream _srcObject;
   final _subscriptions = <StreamSubscription>[];
 
+  bool get didRenderFirstFrame => true;
+
   bool get muted => videoElement?.muted ?? true;
 
   set muted(bool mute) => videoElement?.muted = mute;
