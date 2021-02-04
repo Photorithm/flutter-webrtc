@@ -207,6 +207,20 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         peerConnectionCreateAnswer(peerConnectionId, new ConstraintsMap(constraints), result);
         break;
       }
+      // Convenience method to mute/unmute stream from background thread
+      case "setStreamMute": {
+        String streamId = call.argument("streamId");
+        boolean isMuted = call.argument("isMuted");
+        MediaStream stream = getStreamForId(streamId, "");
+        if(stream != null) {
+          double volume = isMuted ? 0.0 : 1.0;
+          for (AudioTrack track : stream.audioTracks) {
+            track.setVolume(volume);
+          }
+        }
+        result.success(null);
+        break;
+      }
       case "mediaStreamGetTracks": {
         String streamId = call.argument("streamId");
         MediaStream stream = getStreamForId(streamId, "");
