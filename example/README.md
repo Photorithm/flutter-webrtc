@@ -29,6 +29,14 @@ Web
 flutter run -d web
 ```
 
+Windows
+
+```bash
+flutter channel master
+flutter create --platforms windows .
+flutter run -d windows
+```
+
 ## How to Compile Google's WebRTC Source Code for Android
 
 This works for Linux and Windows with WSL, and might work for Mac but still needs to be confirmed.

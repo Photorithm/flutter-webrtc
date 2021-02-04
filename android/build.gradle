@@ -28,7 +28,7 @@ android {
     compileSdkVersion 28
 
     defaultConfig {
-        minSdkVersion 18
+        minSdkVersion 21
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'proguard-rules.pro'
     }
@@ -47,4 +47,5 @@ dependencies {
     // api 'org.webrtc:google-webrtc:1.0.28262'
     api 'com.aar.app:google-webrtc:v2'
     implementation "androidx.annotation:annotation:1.1.0"
+
 }
