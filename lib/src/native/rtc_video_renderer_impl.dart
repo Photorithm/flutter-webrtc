@@ -15,6 +15,7 @@ class RTCVideoRendererNative extends VideoRenderer {
   StreamSubscription<dynamic> _eventSubscription;
   bool _didRenderFirstFrame = false;
 
+  @override
   bool get didRenderFirstFrame => _didRenderFirstFrame;
 
   @override

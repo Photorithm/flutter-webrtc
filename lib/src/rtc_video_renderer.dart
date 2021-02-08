@@ -18,6 +18,8 @@ class RTCVideoRenderer {
 
   bool get renderVideo => _delegate.renderVideo;
 
+  bool get didRenderFirstFrame => _delegate.didRenderFirstFrame;
+
   bool get muted => _delegate.muted;
 
   MediaStream get srcObject => _delegate.srcObject;

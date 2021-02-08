@@ -40,6 +40,7 @@ class RTCVideoRendererWeb extends VideoRenderer {
   html.VideoElement _videoElement;
   MediaStream _srcObject;
   final _subscriptions = <StreamSubscription>[];
+  bool _didRenderFirstFrame = false;
 
   set objectFit(String fit) => _videoElement.style.objectFit = fit;
 
@@ -63,6 +64,9 @@ class RTCVideoRendererWeb extends VideoRenderer {
 
   @override
   bool get renderVideo => _videoElement != null && _srcObject != null;
+
+  @override
+  bool get didRenderFirstFrame => _didRenderFirstFrame;
 
   @override
   Future<void> initialize() async {
@@ -133,6 +137,7 @@ class RTCVideoRendererWeb extends VideoRenderer {
         width: _videoElement?.videoWidth?.toDouble() ?? 0.0,
         height: _videoElement?.videoHeight?.toDouble() ?? 0.0,
         renderVideo: renderVideo);
+    _didRenderFirstFrame |= value.width + value.height > 0;
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import 'media_stream.dart';
 
 @immutable
@@ -53,6 +54,9 @@ abstract class VideoRenderer extends ValueNotifier<RTCVideoValue> {
   int get videoHeight;
 
   bool get muted;
+
+  bool get didRenderFirstFrame;
+
   set muted(bool mute);
 
   ///Return true if the audioOutput have been succesfully changed
