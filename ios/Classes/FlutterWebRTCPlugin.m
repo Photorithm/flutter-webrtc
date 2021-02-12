@@ -461,10 +461,6 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         FlutterRTCVideoRenderer *render = self.renders[textureId];
         NSString *streamId = argsMap[@"streamId"];
         NSString *ownerTag = argsMap[@"ownerTag"];
-        // NSString *peerConnectionId = argsMap[@"ownerTag"];
-        // if(render){
-        //     [self setStreamId:streamId view:render peerConnectionId:peerConnectionId];
-        // }
         if(!render) {
             result([FlutterError errorWithCode:@"videoRendererSetSrcObject: render is nil" message:nil details:nil]);
             return;
