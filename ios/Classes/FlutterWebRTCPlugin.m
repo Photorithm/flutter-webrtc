@@ -460,7 +460,8 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         NSNumber *textureId = argsMap[@"textureId"];
         FlutterRTCVideoRenderer *render = self.renders[textureId];
         NSString *streamId = argsMap[@"streamId"];
-        NSString *peerConnectionId = argsMap[@"ownerTag"];
+        NSString *ownerTag = argsMap[@"ownerTag"];
+        // NSString *peerConnectionId = argsMap[@"ownerTag"];
         // if(render){
         //     [self setStreamId:streamId view:render peerConnectionId:peerConnectionId];
         // }
