@@ -6,11 +6,14 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <WebRTC/WebRTC.h>
-#import <stdatomic.h>
 
-
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wprotocol"
 
 @implementation FlutterWebRTCPlugin {
+    
+#pragma clang diagnostic pop
+
     FlutterMethodChannel *_methodChannel;
     id _registry;
     id _messenger;
@@ -18,69 +21,68 @@
     BOOL _speakerOn;
 }
 
-static _Atomic(int) _threadCount = 0;
-static NSMutableDictionary<NSString *, RTCPeerConnection *> *globalPeerConnections = nil;
-static NSMutableDictionary<NSString *, RTCMediaStream *> *globalStreams = nil;
-static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = nil;
-
 @synthesize messenger = _messenger;
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-  FlutterMethodChannel* channel = [FlutterMethodChannel
-                   methodChannelWithName:@"FlutterWebRTC.Method"
-                   binaryMessenger:[registrar messenger]];
-  UIViewController *viewController = (UIViewController *)registrar.messenger;
-  FlutterWebRTCPlugin* instance = [[FlutterWebRTCPlugin alloc] initWithChannel:channel
-                                    registrar:registrar
-                                    messenger:[registrar messenger]
-                                 viewController:viewController
-                                  withTextures:[registrar textures]];
-  [registrar addMethodCallDelegate:instance channel:channel];
+    
+    FlutterMethodChannel* channel = [FlutterMethodChannel
+                                     methodChannelWithName:@"FlutterWebRTC.Method"
+                                     binaryMessenger:[registrar messenger]];
+#if TARGET_OS_IPHONE
+    UIViewController *viewController = (UIViewController *)registrar.messenger;
+#endif
+    FlutterWebRTCPlugin* instance = [[FlutterWebRTCPlugin alloc] initWithChannel:channel
+                                                                       registrar:registrar
+                                                                       messenger:[registrar messenger]
+#if TARGET_OS_IPHONE
+                                                                  viewController:viewController
+#endif
+                                                                    withTextures:[registrar textures]];
+    [registrar addMethodCallDelegate:instance channel:channel];
 }
 
 - (instancetype)initWithChannel:(FlutterMethodChannel *)channel
-           registrar:(NSObject<FlutterPluginRegistrar>*)registrar
-           messenger:(NSObject<FlutterBinaryMessenger>*)messenger
-         viewController:(UIViewController *)viewController
-          withTextures:(NSObject<FlutterTextureRegistry> *)textures{
-  self = [super init];
-  if (self) {
-    _methodChannel = channel;
-    _registry = registrar;
-    _textures = textures;
-    _messenger = messenger;
-    _speakerOn = NO;
-    self.viewController = viewController;
-  }
-  RTCDefaultVideoDecoderFactory *decoderFactory = [[RTCDefaultVideoDecoderFactory alloc] init];
-  RTCDefaultVideoEncoderFactory *encoderFactory = [[RTCDefaultVideoEncoderFactory alloc] init];
-  _peerConnectionFactory = [[RTCPeerConnectionFactory alloc]
-               initWithEncoderFactory:encoderFactory
-               decoderFactory:decoderFactory];
-  @synchronized (globalPeerConnections) {
-    atomic_fetch_add_explicit(&_threadCount, 1, memory_order_relaxed);
-    if(globalPeerConnections == nil){
-      globalPeerConnections = [NSMutableDictionary new];
-    }
-    if(globalStreams == nil){
-      globalStreams =[NSMutableDictionary new];
-    }
-    if(globalTracks == nil){
-      globalTracks = [NSMutableDictionary new];
-    }
+                      registrar:(NSObject<FlutterPluginRegistrar>*)registrar
+                      messenger:(NSObject<FlutterBinaryMessenger>*)messenger
+#if TARGET_OS_IPHONE
+                 viewController:(UIViewController *)viewController
+#endif
+                   withTextures:(NSObject<FlutterTextureRegistry> *)textures{
 
-    self.peerConnections = globalPeerConnections;
-    self.localStreams = globalStreams;
-    self.localTracks = globalTracks;
-  }
-  self.renders = [[NSMutableDictionary alloc] init];
-  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:nil];
-  
-  return self;
+    self = [super init];
+    
+    if (self) {
+        _methodChannel = channel;
+        _registry = registrar;
+        _textures = textures;
+        _messenger = messenger;
+        _speakerOn = NO;
+#if TARGET_OS_IPHONE
+        self.viewController = viewController;
+#endif
+    }
+    //RTCSetMinDebugLogLevel(RTCLoggingSeverityVerbose);
+    RTCDefaultVideoDecoderFactory *decoderFactory = [[RTCDefaultVideoDecoderFactory alloc] init];
+    RTCDefaultVideoEncoderFactory *encoderFactory = [[RTCDefaultVideoEncoderFactory alloc] init];
+    
+    _peerConnectionFactory = [[RTCPeerConnectionFactory alloc]
+                              initWithEncoderFactory:encoderFactory
+                              decoderFactory:decoderFactory];
+    
+    
+    self.peerConnections = [NSMutableDictionary new];
+    self.localStreams = [NSMutableDictionary new];
+    self.localTracks = [NSMutableDictionary new];
+    self.renders = [[NSMutableDictionary alloc] init];
+#if TARGET_OS_IPHONE
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSessionRouteChange:) name:AVAudioSessionRouteChangeNotification object:nil];
+#endif
+    return self;
 }
 
 
 - (void)didSessionRouteChange:(NSNotification *)notification {
+#if TARGET_OS_IPHONE
   NSDictionary *interuptionDict = notification.userInfo;
   NSInteger routeChangeReason = [[interuptionDict valueForKey:AVAudioSessionRouteChangeReasonKey] integerValue];
 
@@ -94,6 +96,7 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
     default:
       break;
   }
+#endif
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult) result {
@@ -128,9 +131,13 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         NSDictionary* constraints = argsMap[@"constraints"];
         [self getUserMedia:constraints result:result];
     } else if ([@"getDisplayMedia" isEqualToString:call.method]) {
+#if TARGET_OS_IPHONE
         NSDictionary* argsMap = call.arguments;
         NSDictionary* constraints = argsMap[@"constraints"];
         [self getDisplayMedia:constraints result:result];
+#else
+        result(FlutterMethodNotImplemented);
+#endif
     } else if ([@"createLocalMediaStream" isEqualToString:call.method]) {
         [self createLocalMediaStream:result];
     } else if ([@"getSources" isEqualToString:call.method]) {
@@ -270,7 +277,7 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
             NSOperationQueue *queue = [[NSOperationQueue alloc] init];
             [queue addOperationWithBlock:^{
                 double durationMs = duration / 1000.0;
-		        double interToneGapMs = interToneGap / 1000.0;
+                double interToneGapMs = interToneGap / 1000.0;
                 [audioSender.dtmfSender insertDtmf :(NSString *)tone
                 duration:(NSTimeInterval) durationMs interToneGap:(NSTimeInterval)interToneGapMs];
                 NSLog(@"DTMF Tone played ");
@@ -323,7 +330,7 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
     } else if ([@"dataChannelSend" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
-        NSString* dataChannelId = argsMap[@"dataChannelId"];
+        NSNumber* dataChannelId = argsMap[@"dataChannelId"];
         NSString* type = argsMap[@"type"];
         id data = argsMap[@"data"];
         
@@ -375,7 +382,7 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
 
         RTCMediaStream *stream = self.localStreams[streamId];
         if (stream) {
-            RTCMediaStreamTrack *track = self.localTracks[trackId];
+            RTCMediaStreamTrack *track = [self trackForId: trackId];
             if(track != nil) {
                 if([track isKindOfClass:[RTCAudioTrack class]]) {
                     RTCAudioTrack *audioTrack = (RTCAudioTrack *)track;
@@ -442,7 +449,6 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         }
         result(nil);
     } else if ([@"createVideoRenderer" isEqualToString:call.method]){
-        NSDictionary* argsMap = call.arguments;
         FlutterRTCVideoRenderer* render = [self createWithTextureRegistry:_textures
                                           messenger:_messenger];
         self.renders[@(render.textureId)] = render;
@@ -547,15 +553,21 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         }
         result(nil);
     } else if ([@"enableSpeakerphone" isEqualToString:call.method]) {
+#if TARGET_OS_IPHONE
         NSDictionary* argsMap = call.arguments;
         NSNumber* enable = argsMap[@"enable"];
         _speakerOn = enable.boolValue;
         AVAudioSession *audioSession = [AVAudioSession sharedInstance];
         [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord
-                      withOptions:_speakerOn ? AVAudioSessionCategoryOptionDefaultToSpeaker : 0
-                            error:nil];
+                      withOptions:_speakerOn ? AVAudioSessionCategoryOptionDefaultToSpeaker 
+                      : 
+                      AVAudioSessionCategoryOptionAllowBluetooth|AVAudioSessionCategoryOptionAllowBluetoothA2DP
+                        error:nil];
         [audioSession setActive:YES error:nil];
         result(nil);
+#else
+        result(FlutterMethodNotImplemented);
+#endif
     } else if ([@"getLocalDescription" isEqualToString:call.method]) {
         NSDictionary* argsMap = call.arguments;
         NSString* peerConnectionId = argsMap[@"peerConnectionId"];
@@ -584,17 +596,321 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         }
     } else if ([@"setConfiguration" isEqualToString:call.method]){
         NSDictionary* argsMap = call.arguments;
-            NSString* peerConnectionId = argsMap[@"peerConnectionId"];
-            NSDictionary* configuration = argsMap[@"configuration"];
-            RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
-            if(peerConnection) {
-                [self peerConnectionSetConfiguration:[self RTCConfiguration:configuration] peerConnection:peerConnection];
-                result(nil);
-            } else {
-                result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSDictionary* configuration = argsMap[@"configuration"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection) {
+            [self peerConnectionSetConfiguration:[self RTCConfiguration:configuration] peerConnection:peerConnection];
+            result(nil);
+        } else {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
                                            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
                                            details:nil]);
+        }
+    } else if ([@"addTrack" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* trackId = argsMap[@"trackId"];
+        NSArray* streamIds = argsMap[@"streamIds"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        
+        RTCMediaStreamTrack *track = [self trackForId:trackId];
+        if(track == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: track not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpSender* sender = [peerConnection addTrack:track streamIds:streamIds];
+        result([self rtpSenderToMap:sender]);
+    } else if ([@"removeTrack" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* senderId = argsMap[@"senderId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpSender *sender = [self getRtpSenderById:peerConnection Id:senderId];
+        if(sender == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: sender not found!"]
+            details:nil]);
+            return;
+        }
+        result(@{@"result": @([peerConnection removeTrack:sender])});
+    } else if ([@"addTransceiver" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSDictionary* transceiverInit = argsMap[@"transceiverInit"];
+        NSString* trackId = argsMap[@"trackId"];
+        NSString* mediaType = argsMap[@"mediaType"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpTransceiver* transceiver = nil;
+        
+        if(trackId != nil) {
+            RTCMediaStreamTrack *track = [self trackForId:trackId];
+            if (transceiverInit != nil) {
+                RTCRtpTransceiverInit *init = [self mapToTransceiverInit:transceiverInit];
+                transceiver = [peerConnection addTransceiverWithTrack:track init:init];
+            } else {
+                transceiver = [peerConnection addTransceiverWithTrack:track];
             }
+        } else if (mediaType != nil) {
+             RTCRtpMediaType rtpMediaType = [self stringToRtpMediaType:mediaType];
+            if (transceiverInit != nil) {
+                RTCRtpTransceiverInit *init = [self mapToTransceiverInit:transceiverInit];
+                transceiver = [peerConnection addTransceiverOfType:(rtpMediaType) init:init];
+            } else {
+                transceiver = [peerConnection addTransceiverOfType:rtpMediaType];
+            }
+        } else {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: Incomplete parameters!"]
+            details:nil]);
+            return;
+        }
+        
+        if (transceiver == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: can't addTransceiver!"]
+            details:nil]);
+            return;
+        }
+        
+        result([self transceiverToMap:transceiver]);
+    } else if ([@"rtpTransceiverSetDirection" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* direction = argsMap[@"direction"];
+        NSString* transceiverId = argsMap[@"transceiverId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpTransceiver *transcevier = [self getRtpTransceiverById:peerConnection Id:transceiverId];
+        if(transcevier == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: transcevier not found!"]
+            details:nil]);
+            return;
+        }
+#if TARGET_OS_IPHONE
+        [transcevier setDirection:[self stringToTransceiverDirection:direction] error:nil];
+#elif TARGET_OS_MAC
+        [transcevier setDirection:[self stringToTransceiverDirection:direction]];
+#endif
+        result(nil);
+    } else if ([@"rtpTransceiverGetCurrentDirection" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* transceiverId = argsMap[@"transceiverId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpTransceiver *transcevier = [self getRtpTransceiverById:peerConnection Id:transceiverId];
+        if(transcevier == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: transcevier not found!"]
+            details:nil]);
+            return;
+        }
+        result(@{@"result": [self transceiverDirectionString:transcevier.direction]});
+    } else if ([@"rtpTransceiverStop" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* transceiverId = argsMap[@"transceiverId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpTransceiver *transcevier = [self getRtpTransceiverById:peerConnection Id:transceiverId];
+        if(transcevier == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: transcevier not found!"]
+            details:nil]);
+            return;
+        }
+#if TARGET_OS_IPHONE
+             [transcevier stopInternal];
+#elif TARGET_OS_MAC
+             [transcevier stop];
+#endif
+        result(nil);
+    } else if ([@"rtpSenderSetParameters" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* senderId = argsMap[@"rtpSenderId"];
+        NSDictionary* parameters = argsMap[@"parameters"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpSender *sender = [self getRtpSenderById:peerConnection Id:senderId];
+        if(sender == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: sender not found!"]
+            details:nil]);
+            return;
+        }
+        [sender setParameters:[self updateRtpParameters: parameters : sender.parameters]];
+        
+        result(@{@"result": @(YES)});
+    } else if ([@"rtpSenderReplaceTrack" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* senderId = argsMap[@"senderId"];
+        NSString* trackId = argsMap[@"trackId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpSender *sender = [self getRtpSenderById:peerConnection Id:senderId];
+        if(sender == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: sender not found!"]
+            details:nil]);
+            return;
+        }
+        RTCMediaStreamTrack *track = [self trackForId:trackId];
+        if(track == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: track not found!"]
+            details:nil]);
+            return;
+        }
+        [sender setTrack:track];
+        result(nil);
+    } else if ([@"rtpSenderSetTrack" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* senderId = argsMap[@"senderId"];
+        NSString* trackId = argsMap[@"trackId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpSender *sender = [self getRtpSenderById:peerConnection Id:senderId];
+        if(sender == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: sender not found!"]
+            details:nil]);
+            return;
+        }
+        RTCMediaStreamTrack *track = [self trackForId:trackId];
+        if(track == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: track not found!"]
+            details:nil]);
+            return;
+        }
+        [sender setTrack:track];
+        result(nil);
+    } else if ([@"rtpSenderDispose" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        NSString* senderId = argsMap[@"senderId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        RTCRtpSender *sender = [self getRtpSenderById:peerConnection Id:senderId];
+        if(sender == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: sender not found!"]
+            details:nil]);
+            return;
+        }
+        [peerConnection removeTrack:sender];
+        result(nil);
+    } else if ([@"getSenders" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        
+        NSMutableArray *senders = [NSMutableArray array];
+        for (RTCRtpSender *sender in peerConnection.senders) {
+            [senders addObject:[self rtpSenderToMap:sender]];
+        }
+
+        result(@{ @"senders":senders});
+    } else if ([@"getReceivers" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        
+        NSMutableArray *receivers = [NSMutableArray array];
+        for (RTCRtpReceiver *receiver in peerConnection.receivers) {
+            [receivers addObject:[self receiverToMap:receiver]];
+        }
+
+        result(@{ @"receivers":receivers});
+    } else if ([@"getTransceivers" isEqualToString:call.method]){
+        NSDictionary* argsMap = call.arguments;
+        NSString* peerConnectionId = argsMap[@"peerConnectionId"];
+        RTCPeerConnection *peerConnection = self.peerConnections[peerConnectionId];
+        if(peerConnection == nil) {
+            result([FlutterError errorWithCode:[NSString stringWithFormat:@"%@Failed",call.method]
+            message:[NSString stringWithFormat:@"Error: peerConnection not found!"]
+            details:nil]);
+            return;
+        }
+        
+        NSMutableArray *transceivers = [NSMutableArray array];
+        for (RTCRtpTransceiver *transceiver in peerConnection.transceivers) {
+            [transceivers addObject:[self transceiverToMap:transceiver]];
+        }
+
+        result(@{ @"transceivers":transceivers});
     } else {
         result(FlutterMethodNotImplemented);
     }
@@ -602,27 +918,18 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
 
 - (void)dealloc
 {
-    @synchronized (globalPeerConnections) {
-     atomic_fetch_add_explicit(&_threadCount, -1, memory_order_relaxed);
-     if(_threadCount == 0){
-         [_localTracks removeAllObjects];
-         _localTracks = nil;
-         [_localStreams removeAllObjects];
-         _localStreams = nil;
-     
-         for (NSString *peerConnectionId in _peerConnections) {
-             RTCPeerConnection *peerConnection = _peerConnections[peerConnectionId];
-             peerConnection.delegate = nil;
-             [peerConnection close];
-         }
-         [_peerConnections removeAllObjects];
-         _peerConnectionFactory = nil;
-         
-         globalStreams = nil;
-         globalTracks = nil;
-         globalPeerConnections = nil;
-     }
+    [_localTracks removeAllObjects];
+    _localTracks = nil;
+    [_localStreams removeAllObjects];
+    _localStreams = nil;
+    
+    for (NSString *peerConnectionId in _peerConnections) {
+        RTCPeerConnection *peerConnection = _peerConnections[peerConnectionId];
+        peerConnection.delegate = nil;
+        [peerConnection close];
     }
+    [_peerConnections removeAllObjects];
+    _peerConnectionFactory = nil;
 }
 
 
@@ -665,39 +972,47 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
     }
 }
 
-- (RTCMediaStream*)streamForId:(NSString*)streamId peerConnectionId:(NSString *)peerConnectionId
-{
-    RTCMediaStream *stream = _localStreams[streamId];
-    if (!stream) {
-        if (peerConnectionId.length > 0) {
-             RTCPeerConnection *peerConnection = [_peerConnections objectForKey:peerConnectionId];
-             stream = peerConnection.remoteStreams[streamId];
-        } else {
-            for (RTCPeerConnection *peerConnection in _peerConnections.allValues) {
-              stream = peerConnection.remoteStreams[streamId];
-              if (stream) {
-                   break;
-              }
+- (RTCMediaStream*)streamForId:(NSString*)streamId peerConnectionId:(NSString *)peerConnectionId {
+    RTCMediaStream *stream = nil;
+    if (peerConnectionId.length > 0) {
+        RTCPeerConnection *peerConnection = [_peerConnections objectForKey:peerConnectionId];
+        stream = peerConnection.remoteStreams[streamId];
+    } else {
+        for (RTCPeerConnection *peerConnection in _peerConnections.allValues) {
+            stream = peerConnection.remoteStreams[streamId];
+            if (stream) {
+                break;
             }
-       }
+        }
+    }
+    if (!stream) {
+        stream = _localStreams[streamId];
     }
     return stream;
 }
 
-- (RTCMediaStreamTrack*)trackForId:(NSString*)trackId
-{
+- (RTCMediaStreamTrack*)trackForId:(NSString*)trackId {
     RTCMediaStreamTrack *track = _localTracks[trackId];
     if (!track) {
         for (RTCPeerConnection *peerConnection in _peerConnections.allValues) {
             track = peerConnection.remoteTracks[trackId];
+            if (!track) {
+                for (RTCRtpTransceiver *transceiver in peerConnection.transceivers) {
+                    if (transceiver.receiver.track != nil && [transceiver.receiver.track.trackId isEqual:trackId]) {
+                        track = transceiver.receiver.track;
+                        break;
+                    }
+                }
+            }
             if (track) {
                 break;
             }
         }
     }
-
-    return track;    
+    return track;
 }
+
+
 
 - (RTCIceServer *)RTCIceServer:(id)json
 {
@@ -835,9 +1150,6 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
         if (json[@"ordered"]) {
             init.isOrdered = [json[@"ordered"] boolValue];
         }
-        if (json[@"maxRetransmitTime"]) {
-            init.maxRetransmitTimeMs = [json[@"maxRetransmitTime"] integerValue];
-        }
         if (json[@"maxRetransmits"]) {
             init.maxRetransmits = [json[@"maxRetransmits"] intValue];
         }
@@ -859,4 +1171,300 @@ static NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *globalTracks = ni
                       [[rect valueForKey:@"height"] doubleValue]);
 }
 
+- (NSDictionary*)dtmfSenderToMap:(id<RTCDtmfSender>)dtmf Id:(NSString*)Id {
+     return @{
+         @"dtmfSenderId": Id,
+         @"interToneGap": @(dtmf.interToneGap / 1000.0),
+         @"duration": @(dtmf.duration / 1000.0),
+     };
+}
+
+- (NSDictionary*)rtpParametersToMap:(RTCRtpParameters*)parameters {
+    NSDictionary *rtcp = @{
+        @"cname": parameters.rtcp.cname,
+        @"reducedSize": @(parameters.rtcp.isReducedSize),
+    };
+    
+    NSMutableArray *headerExtensions = [NSMutableArray array];
+    for (RTCRtpHeaderExtension* headerExtension in parameters.headerExtensions) {
+        [headerExtensions addObject:@{
+            @"uri": headerExtension.uri,
+            @"encrypted": @(headerExtension.encrypted),
+            @"id": @(headerExtension.id),
+        }];
+    }
+    
+    NSMutableArray *encodings = [NSMutableArray array];
+    for (RTCRtpEncodingParameters* encoding in parameters.encodings) {
+        [encodings addObject:@{
+            @"active": @(encoding.isActive),
+            @"minBitrate": encoding.minBitrateBps? encoding.minBitrateBps : [NSNumber numberWithInt:0],
+            @"maxBitrate": encoding.maxBitrateBps? encoding.maxBitrateBps : [NSNumber numberWithInt:0],
+            @"maxFramerate": encoding.maxFramerate? encoding.maxFramerate : @(30),
+            @"numTemporalLayers": encoding.numTemporalLayers? encoding.numTemporalLayers : @(1),
+            @"scaleResolutionDownBy": encoding.scaleResolutionDownBy? @(encoding.scaleResolutionDownBy.doubleValue) : [NSNumber numberWithDouble:1.0],
+            @"ssrc": encoding.ssrc ? encoding.ssrc : [NSNumber numberWithLong:0]
+        }];
+    }
+
+    NSMutableArray *codecs = [NSMutableArray array];
+    for (RTCRtpCodecParameters* codec in parameters.codecs) {
+        [codecs addObject:@{
+            @"name": codec.name,
+            @"payloadType": @(codec.payloadType),
+            @"clockRate": codec.clockRate,
+            @"numChannels": codec.numChannels? codec.numChannels : @(1),
+            @"parameters": codec.parameters,
+            @"kind": codec.kind
+        }];
+    }
+    
+     return @{
+         @"transactionId": parameters.transactionId,
+         @"rtcp": rtcp,
+         @"headerExtensions": headerExtensions,
+         @"encodings": encodings,
+         @"codecs": codecs
+     };
+}
+
+-(NSString*)streamTrackStateToString:(RTCMediaStreamTrackState)state {
+    switch (state) {
+        case RTCMediaStreamTrackStateLive:
+            return @"live";
+        case RTCMediaStreamTrackStateEnded:
+            return @"ended";
+        default:
+            break;
+    }
+    return @"";
+}
+
+- (NSDictionary*)mediaStreamToMap:(RTCMediaStream *)stream ownerTag:(NSString*)ownerTag {
+    NSMutableArray* audioTracks = [NSMutableArray array];
+    NSMutableArray* videoTracks = [NSMutableArray array];
+    
+    for (RTCMediaStreamTrack* track in stream.audioTracks) {
+        [audioTracks addObject:[self mediaTrackToMap:track]];
+    }
+
+    for (RTCMediaStreamTrack* track in stream.videoTracks) {
+        [videoTracks addObject:[self mediaTrackToMap:track]];
+    }
+
+    return @{
+        @"streamId": stream.streamId,
+        @"ownerTag": ownerTag,
+        @"audioTracks": audioTracks,
+        @"videoTracks":videoTracks,
+        
+    };
+}
+
+- (NSDictionary*)mediaTrackToMap:(RTCMediaStreamTrack*)track {
+    if(track == nil)
+        return @{};
+    NSDictionary *params = @{
+        @"enabled": @(track.isEnabled),
+        @"id": track.trackId,
+        @"kind": track.kind,
+        @"label": track.trackId,
+        @"readyState": [self streamTrackStateToString:track.readyState],
+        @"remote": @(YES)
+        };
+    return params;
+}
+
+- (NSDictionary*)rtpSenderToMap:(RTCRtpSender *)sender {
+    NSDictionary *params = @{
+        @"senderId": sender.senderId,
+        @"ownsTrack": @(YES),
+        @"rtpParameters": [self rtpParametersToMap:sender.parameters],
+        @"track": [self mediaTrackToMap:sender.track],
+        @"dtmfSender": [self dtmfSenderToMap:sender.dtmfSender Id:sender.senderId]
+    };
+    return params;
+}
+
+-(NSDictionary*)receiverToMap:(RTCRtpReceiver*)receiver {
+    NSDictionary *params = @{
+        @"receiverId": receiver.receiverId,
+        @"rtpParameters": [self rtpParametersToMap:receiver.parameters],
+        @"track": [self mediaTrackToMap:receiver.track],
+    };
+    return params;
+}
+
+-(RTCRtpTransceiver*) getRtpTransceiverById:(RTCPeerConnection *)peerConnection Id:(NSString*)Id {
+    for( RTCRtpTransceiver* transceiver in peerConnection.transceivers) {
+        if([transceiver.mid isEqualToString:Id]){
+            return transceiver;
+        }
+    }
+    return nil;
+}
+
+-(RTCRtpSender*) getRtpSenderById:(RTCPeerConnection *)peerConnection Id:(NSString*)Id {
+   for( RTCRtpSender* sender in peerConnection.senders) {
+       if([sender.senderId isEqualToString:Id]){
+            return sender;
+        }
+    }
+    return nil;
+}
+
+-(RTCRtpReceiver*) getRtpReceiverById:(RTCPeerConnection *)peerConnection Id:(NSString*)Id {
+    for( RTCRtpReceiver* receiver in peerConnection.receivers) {
+        if([receiver.receiverId isEqualToString:Id]){
+            return receiver;
+        }
+    }
+    return nil;
+}
+
+-(RTCRtpEncodingParameters*)mapToEncoding:(NSDictionary*)map {
+    RTCRtpEncodingParameters *encoding = [[RTCRtpEncodingParameters alloc] init];
+    encoding.isActive = YES;
+    encoding.scaleResolutionDownBy = [NSNumber numberWithDouble:1.0];
+    encoding.numTemporalLayers = [NSNumber numberWithInt:1];
+#if TARGET_OS_IPHONE
+    encoding.networkPriority = RTCPriorityLow;
+    encoding.bitratePriority = 1.0;
+#endif
+    [encoding setRid:map[@"rid"]];
+    
+    if(map[@"active"] != nil) {
+        [encoding setIsActive:((NSNumber*)map[@"active"]).boolValue];
+    }
+    
+    if(map[@"minBitrate"] != nil) {
+        [encoding setMinBitrateBps:(NSNumber*)map[@"minBitrate"]];
+    }
+    
+    if(map[@"maxBitrate"] != nil) {
+        [encoding setMaxBitrateBps:(NSNumber*)map[@"maxBitrate"]];
+    }
+    
+    if(map[@"maxFramerate"] != nil) {
+        [encoding setMaxFramerate:(NSNumber*)map[@"maxFramerate"]];
+    }
+    
+    if(map[@"numTemporalLayers"] != nil) {
+        [encoding setNumTemporalLayers:(NSNumber*)map[@"numTemporalLayers"]];
+    }
+    
+    if(map[@"scaleResolutionDownBy"] != nil) {
+        [encoding setScaleResolutionDownBy:(NSNumber*)map[@"scaleResolutionDownBy"]];
+    }
+    return  encoding;
+}
+
+-(RTCRtpTransceiverInit*)mapToTransceiverInit:(NSDictionary*)map {
+    NSArray<NSString*>* streamIds = map[@"streamIds"];
+    NSArray<NSDictionary*>* encodingsParams = map[@"sendEncodings"];
+    NSString* direction = map[@"direction"];
+    
+    RTCRtpTransceiverInit* init = [RTCRtpTransceiverInit alloc];
+
+    if(direction != nil) {
+        init.direction = [self stringToTransceiverDirection:direction];
+    }
+
+    if(streamIds != nil) {
+        init.streamIds = streamIds;
+    }
+
+    if(encodingsParams != nil) {
+        NSMutableArray<RTCRtpEncodingParameters *> *sendEncodings = [[NSMutableArray alloc] init];
+        for (NSDictionary* map in encodingsParams){
+            [sendEncodings insertObject:[self mapToEncoding:map] atIndex:0];
+        }
+        [init setSendEncodings:sendEncodings];
+    }
+    return  init;
+}
+
+-(RTCRtpMediaType)stringToRtpMediaType:(NSString*)type {
+    if([type isEqualToString:@"audio"]) {
+        return RTCRtpMediaTypeAudio;
+    } else if([type isEqualToString:@"video"]) {
+        return RTCRtpMediaTypeVideo;
+    } else if([type isEqualToString:@"data"]) {
+        return RTCRtpMediaTypeData;
+    }
+    return RTCRtpMediaTypeAudio;
+}
+
+-(RTCRtpTransceiverDirection)stringToTransceiverDirection:(NSString*)type {
+    if([type isEqualToString:@"sendrecv"]) {
+            return RTCRtpTransceiverDirectionSendRecv;
+    } else if([type isEqualToString:@"sendonly"]){
+            return RTCRtpTransceiverDirectionSendOnly;
+    } else if([type isEqualToString: @"recvonly"]){
+            return RTCRtpTransceiverDirectionRecvOnly;
+    } else if([type isEqualToString: @"inactive"]){
+            return RTCRtpTransceiverDirectionInactive;
+    }
+    return RTCRtpTransceiverDirectionInactive;
+}
+
+-(RTCRtpParameters *)updateRtpParameters :(NSDictionary *)newParameters : (RTCRtpParameters *)parameters {
+    NSArray* encodings = [newParameters objectForKey:@"encodings"];
+    NSArray<RTCRtpEncodingParameters *> *nativeEncodings = parameters.encodings;
+    for(int i = 0; i < [nativeEncodings count]; i++){
+        RTCRtpEncodingParameters *nativeEncoding = [nativeEncodings objectAtIndex:i];
+        NSDictionary *encoding = [encodings objectAtIndex:i];
+        if([encoding objectForKey:@"active"]){
+            nativeEncoding.isActive =  [[encoding objectForKey:@"active"] boolValue];
+        }
+        if([encoding objectForKey:@"maxBitrate"]){
+            nativeEncoding.maxBitrateBps =  [encoding objectForKey:@"maxBitrate"];
+        }
+        if([encoding objectForKey:@"minBitrate"]){
+            nativeEncoding.minBitrateBps =  [encoding objectForKey:@"minBitrate"];
+        }
+        if([encoding objectForKey:@"maxFramerate"]){
+            nativeEncoding.maxFramerate =  [encoding objectForKey:@"maxFramerate"];
+        }
+        if([encoding objectForKey:@"numTemporalLayers"]){
+            nativeEncoding.numTemporalLayers =  [encoding objectForKey:@"numTemporalLayers"];
+        }
+        if([encoding objectForKey:@"scaleResolutionDownBy"]){
+            nativeEncoding.scaleResolutionDownBy =  [encoding objectForKey:@"scaleResolutionDownBy"];
+        }
+    }
+
+    return parameters;
+  }
+
+-(NSString*)transceiverDirectionString:(RTCRtpTransceiverDirection)direction {
+       switch (direction) {
+        case RTCRtpTransceiverDirectionSendRecv:
+            return @"sendrecv";
+        case RTCRtpTransceiverDirectionSendOnly:
+            return @"sendonly";
+        case RTCRtpTransceiverDirectionRecvOnly:
+            return @"recvonly";
+        case RTCRtpTransceiverDirectionInactive:
+            return @"inactive";
+#if TARGET_OS_IPHONE
+        case RTCRtpTransceiverDirectionStopped:
+            return @"stopped";
+#endif
+               break;
+       }
+    return nil;
+}
+
+-(NSDictionary*)transceiverToMap:(RTCRtpTransceiver*)transceiver {
+    NSString* mid = transceiver.mid? transceiver.mid : @"";
+    NSDictionary* params = @{
+        @"transceiverId": mid,
+        @"mid": mid,
+        @"direction": [self transceiverDirectionString:transceiver.direction],
+        @"sender": [self rtpSenderToMap:transceiver.sender],
+        @"receiver": [self receiverToMap:transceiver.receiver]
+    };
+    return params;
+}
 @end
