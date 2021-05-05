@@ -10,9 +10,9 @@ import 'utils.dart';
 class RTCVideoRendererNative extends VideoRenderer {
   RTCVideoRendererNative();
   final _channel = WebRTC.methodChannel();
-  int _textureId;
-  MediaStream _srcObject;
-  StreamSubscription<dynamic> _eventSubscription;
+  int? _textureId;
+  MediaStream? _srcObject;
+  StreamSubscription<dynamic>? _eventSubscription;
   bool _didRenderFirstFrame = false;
 
   @override
@@ -20,9 +20,8 @@ class RTCVideoRendererNative extends VideoRenderer {
 
   @override
   Future<void> initialize() async {
+    final response = await WebRTC.invokeMethod('createVideoRenderer', {});
     _didRenderFirstFrame = false;
-    final response = await _channel
-        .invokeMethod<Map<dynamic, dynamic>>('createVideoRenderer', {});
     _textureId = response['textureId'];
     _eventSubscription = EventChannel('FlutterWebRTC/Texture$textureId')
         .receiveBroadcastStream()
@@ -36,13 +35,13 @@ class RTCVideoRendererNative extends VideoRenderer {
   int get videoHeight => value.height.toInt();
 
   @override
-  int get textureId => _textureId;
+  int? get textureId => _textureId;
 
   @override
-  MediaStream get srcObject => _srcObject;
+  MediaStream? get srcObject => _srcObject;
 
   @override
-  set srcObject(MediaStream stream) {
+  set srcObject(MediaStream? stream) {
     if (textureId == null) throw 'Call initialize before setting the stream';
 
     _srcObject = stream;
@@ -90,30 +89,31 @@ class RTCVideoRendererNative extends VideoRenderer {
   }
 
   void errorListener(Object obj) {
-    final PlatformException e = obj;
-    throw e;
+    if (obj is Exception) {
+      throw obj;
+    }
   }
 
   @override
   bool get renderVideo => srcObject != null;
 
   @override
-  bool get muted => _srcObject?.getAudioTracks()[0]?.muted ?? true;
+  bool get muted => _srcObject?.getAudioTracks()[0].muted ?? true;
 
   @override
   set muted(bool mute) {
     if (_srcObject == null) {
       throw Exception('Can\'t be muted: The MediaStream is null');
     }
-    if (_srcObject.ownerTag != 'local') {
+    if (_srcObject!.ownerTag != 'local') {
       throw Exception(
           'You\'re trying to mute a remote track, this is not supported');
     }
-    if (_srcObject.getAudioTracks()[0] == null) {
-      throw Exception('Can\'t be muted: The MediaStreamTrack is null');
+    if (_srcObject!.getAudioTracks().isEmpty) {
+      throw Exception('Can\'t be muted: The MediaStreamTrack(audio) is empty');
     }
 
-    Helper.setMicrophoneMute(mute, _srcObject.getAudioTracks()[0]);
+    Helper.setMicrophoneMute(mute, _srcObject!.getAudioTracks()[0]);
   }
 
   @override

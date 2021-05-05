@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_webrtc/src/helper.dart';
 
 typedef StreamTrackCallback = Function();
@@ -6,27 +8,27 @@ abstract class MediaStreamTrack {
   MediaStreamTrack();
 
   /// Returns the unique identifier of the track
-  String get id;
+  String? get id;
 
   /// This may label audio and video sources (e.g., "Internal microphone" or
   /// "External USB Webcam").
   ///
   /// Returns the label of the object's corresponding source, if any.
   /// If the corresponding source has or had no label, returns an empty string.
-  String get label;
+  String? get label;
 
   /// Returns the string 'audio' if this object represents an audio track
   /// or 'video' if this object represents a video track.
-  String get kind;
+  String? get kind;
 
   /// Callback for onmute event
-  StreamTrackCallback onMute;
+  StreamTrackCallback? onMute;
 
   /// Callback for unmute event
-  StreamTrackCallback onUnMute;
+  StreamTrackCallback? onUnMute;
 
   /// Callback foronended event
-  StreamTrackCallback onEnded;
+  StreamTrackCallback? onEnded;
 
   /// Returns the enable state of [MediaStreamTrack]
   bool get enabled;
@@ -38,7 +40,7 @@ abstract class MediaStreamTrack {
   set enabled(bool b);
 
   /// Returns true if the track is muted, and false otherwise.
-  bool get muted;
+  bool? get muted;
 
   /// Returns a map containing the set of constraints most recently established
   /// for the track using a prior call to applyConstraints().
@@ -55,7 +57,7 @@ abstract class MediaStreamTrack {
   /// These constraints let the Web site or app establish ideal values and
   /// acceptable ranges of values for the constrainable properties of the track,
   /// such as frame rate, dimensions, echo cancelation, and so forth.
-  Future<void> applyConstraints([Map<String, dynamic> constraints]) {
+  Future<void> applyConstraints([Map<String, dynamic>? constraints]) {
     throw UnimplementedError();
   }
 
@@ -93,7 +95,7 @@ abstract class MediaStreamTrack {
     throw UnimplementedError();
   }
 
-  Future<dynamic> captureFrame([String filePath]) {
+  Future<ByteBuffer> captureFrame() {
     throw UnimplementedError();
   }
 

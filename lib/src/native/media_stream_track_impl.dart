@@ -1,16 +1,21 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../interface/media_stream_track.dart';
 import 'utils.dart';
 
 class MediaStreamTrackNative extends MediaStreamTrack {
   MediaStreamTrackNative(this._trackId, this._label, this._kind, this._enabled);
+
   factory MediaStreamTrackNative.fromMap(Map<dynamic, dynamic> map) {
     return MediaStreamTrackNative(
         map['id'], map['label'], map['kind'], map['enabled']);
   }
+
   final _channel = WebRTC.methodChannel();
   final String _trackId;
   final String _label;
@@ -47,10 +52,10 @@ class MediaStreamTrackNative extends MediaStreamTrack {
   bool get muted => _muted;
 
   @override
-  Future<bool> hasTorch() => _channel.invokeMethod(
+  Future<bool> hasTorch() => _channel.invokeMethod<bool>(
         'mediaStreamTrackHasTorch',
         <String, dynamic>{'trackId': _trackId},
-      );
+      ).then((value) => value ?? false);
 
   @override
   Future<void> setTorch(bool torch) => _channel.invokeMethod(
@@ -71,15 +76,21 @@ class MediaStreamTrackNative extends MediaStreamTrack {
   }
 
   @override
-  Future<dynamic> captureFrame([String filePath]) {
-    return _channel.invokeMethod<void>(
+  Future<ByteBuffer> captureFrame() async {
+    var filePath = await getTemporaryDirectory();
+    await _channel.invokeMethod<void>(
       'captureFrame',
-      <String, dynamic>{'trackId': _trackId, 'path': filePath},
+      <String, dynamic>{
+        'trackId': _trackId,
+        'path': filePath.path + '/captureFrame.png'
+      },
     );
+    return File(filePath.path + '/captureFrame.png').readAsBytes().then((
+        value) => value.buffer);
   }
 
   @override
-  Future<void> applyConstraints([Map<String, dynamic> constraints]) {
+  Future<void> applyConstraints([Map<String, dynamic>? constraints]) {
     if (constraints == null) return Future.value();
 
     var _current = getConstraints();
