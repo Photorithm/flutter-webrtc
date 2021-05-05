@@ -59,10 +59,13 @@ class RTCVideoRendererNative extends VideoRenderer {
   @override
   Future<void> dispose() async {
     await _eventSubscription?.cancel();
-    await _channel.invokeMethod(
-      'videoRendererDispose',
-      <String, dynamic>{'textureId': _textureId},
-    );
+
+    if (_textureId != null) {
+      await _channel.invokeMethod(
+        'videoRendererDispose',
+        <String, dynamic>{'textureId': _textureId},
+      );
+    }
 
     return super.dispose();
   }
