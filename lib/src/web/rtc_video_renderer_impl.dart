@@ -249,4 +249,7 @@ class RTCVideoRendererWeb extends VideoRenderer {
       return element;
     });
   }
+
+  @override
+  bool get didRenderFirstFrame => _didRenderFirstFrame;
 }
