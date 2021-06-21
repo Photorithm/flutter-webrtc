@@ -63,22 +63,20 @@
 
     
     UIImageWriteToSavedPhotosAlbum(uiImage, nil, nil, nil);
-
     CGImageRelease(cgImage);
+    // _result(nil);
 
-    _result(nil);
+    NSData *jpgData = UIImageJPEGRepresentation(uiImage, 0.9f);
 
-    // NSData *jpgData = UIImageJPEGRepresentation(uiImage, 0.9f);
-
-    // if ([jpgData writeToFile:_path atomically:NO]) {
-    //     NSLog(@"File writed successfully to %@", _path);
-    //     _result(nil);
-    // } else {
-    //     NSLog(@"Failed to write to file");
-    //     _result([FlutterError errorWithCode:@"CaptureFrameFailed"
-    //                                 message:@"Failed to write JPEG data to file"
-    //                                 details:nil]);
-    // }
+    if ([jpgData writeToFile:_path atomically:NO]) {
+        NSLog(@"File writed successfully to %@", _path);
+        _result(nil);
+    } else {
+        NSLog(@"Failed to write to file");
+        _result([FlutterError errorWithCode:@"CaptureFrameFailed"
+                                    message:@"Failed to write JPEG data to file"
+                                    details:nil]);
+    }
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [self->_track removeRenderer:self];
