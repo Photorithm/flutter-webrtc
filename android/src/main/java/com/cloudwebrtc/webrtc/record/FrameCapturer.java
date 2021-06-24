@@ -87,6 +87,8 @@ public class FrameCapturer implements VideoSink {
             );
             switch (videoFrame.getRotation()) {
                 case 0:
+                    Bitmap bmp = BitmapFactory.decodeFile(file.toString());
+                    bmp.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
                     break;
                 case 90:
                 case 180:
